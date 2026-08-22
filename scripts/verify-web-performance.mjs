@@ -37,6 +37,8 @@ assert.ok(precacheBytes <= PRECACHE_BUDGET, `PWA precache budget exceeded: ${pre
 const modulePreloads = indexHtml.match(/<link rel="modulepreload"[^>]+>/g)?.join("\n") ?? "";
 const initialOptionalPattern = /vendor-code-highlight|vendor-D3|beautiful-mermaid|vendor-(?:mermaid|tiptap|prosemirror|floating)|ui-primitives|mermaid\.core|[^"']*Diagram-/;
 assert.doesNotMatch(modulePreloads, initialOptionalPattern, "Optional editor and diagram chunks must remain out of the initial HTML modulepreload list");
+assert.doesNotMatch(modulePreloads, /ui-button-tooltip/, "Button tooltips must load only when a titled button is rendered");
+assert.doesNotMatch(modulePreloads, /vendor-radix(?!-slot)/, "Radix overlays must remain out of the initial HTML modulepreload list");
 const initialModulePreloadBytes = [...indexHtml.matchAll(/<link rel="modulepreload"[^>]+href="([^"]+)"[^>]*>/g)]
   .map((match) => statSync(join(distDirectory, match[1].replace(/^\//, ""))).size)
   .reduce((total, size) => total + size, 0);
@@ -44,7 +46,7 @@ const INITIAL_MODULE_PRELOAD_BUDGET = 700 * 1024;
 assert.ok(initialModulePreloadBytes <= INITIAL_MODULE_PRELOAD_BUDGET, `Initial modulepreload budget exceeded: ${initialModulePreloadBytes} > ${INITIAL_MODULE_PRELOAD_BUDGET}`);
 
 const DEFAULT_CHUNK_WARNING_BYTES = 500 * 1024;
-const allowedLargeChunkPattern = /^(?:vendor-(?:beautiful-mermaid|mermaid-(?:layout|render))|.*Diagram-).*\.js$/;
+const allowedLargeChunkPattern = /^(?:vendor-(?:code-highlight|beautiful-mermaid|mermaid-(?:layout|render))|.*Diagram-).*\.js$/;
 const largeChunks = readdirSync(join(distDirectory, "assets"))
   .filter((name) => name.endsWith(".js"))
   .map((name) => ({ name, size: statSync(join(distDirectory, "assets", name)).size }))
@@ -58,10 +60,11 @@ assert.ok(
 );
 assert.ok(
   largeChunks.every(({ name }) => !modulePreloads.includes(name)),
-  "Large optional diagram chunks must not be module-preloaded by the app entry",
+  "Large optional chunks must not be module-preloaded by the app entry",
 );
+const nonPrecachedLargeChunks = largeChunks.filter(({ name }) => !name.startsWith("vendor-code-highlight-"));
 assert.ok(
-  largeChunks.every(({ name }) => !precacheManifest.includes(name)),
+  nonPrecachedLargeChunks.every(({ name }) => !precacheManifest.includes(name)),
   "Large optional diagram chunks must not be included in the PWA precache",
 );
 

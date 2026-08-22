@@ -187,6 +187,22 @@ actor APIClient {
 
     // MARK: - AI note processing
 
+    func listAiPrompts(locale: String) async throws -> [AiPromptTemplate] {
+        let response: AiPromptsResponse = try await request(
+            path: "/api/v1/ai/prompts",
+            query: [.init(name: "locale", value: locale)]
+        )
+        return response.prompts
+    }
+
+    func suggestAiTags(_ input: AiTagSuggestionsInput) async throws -> AiTagSuggestionsResponse {
+        try await request(
+            path: "/api/v1/ai/tag-suggestions",
+            method: "POST",
+            body: input
+        )
+    }
+
     func streamAiGeneration(_ input: AiGenerateInput) -> AsyncThrowingStream<AiStreamEvent, Error> {
         var request = URLRequest(url: makeURL(path: "/api/v1/ai/generate"))
         request.httpMethod = "POST"
